@@ -1,0 +1,66 @@
+[
+    {
+        "Deltas": 5,
+        "Windows": "20",
+        "Unnamed: 2": NaN,
+        "VIX_Lower": 0.0,
+        "VIX_Upper": 12.0,
+        "Regime_Label": "Low Stress (0-12)"
+    },
+    {
+        "Deltas": 10,
+        "Windows": "60",
+        "Unnamed: 2": NaN,
+        "VIX_Lower": 12.0,
+        "VIX_Upper": 15.0,
+        "Regime_Label": "Moderate (12-15)"
+    },
+    {
+        "Deltas": 15,
+        "Windows": "120",
+        "Unnamed: 2": NaN,
+        "VIX_Lower": 15.0,
+        "VIX_Upper": 20.0,
+        "Regime_Label": "Elevated (15-20)"
+    },
+    {
+        "Deltas": 20,
+        "Windows": "Full",
+        "Unnamed: 2": NaN,
+        "VIX_Lower": 20.0,
+        "VIX_Upper": 25.0,
+        "Regime_Label": "Stress (20-25)"
+    },
+    {
+        "Deltas": 25,
+        "Windows": NaN,
+        "Unnamed: 2": NaN,
+        "VIX_Lower": 25.0,
+        "VIX_Upper": 999.0,
+        "Regime_Label": "Crisis (25+)"
+    },
+    {
+        "Deltas": 30,
+        "Windows": NaN,
+        "Unnamed: 2": NaN,
+        "VIX_Lower": NaN,
+        "VIX_Upper": NaN,
+        "Regime_Label": NaN
+    },
+    {
+        "Deltas": 35,
+        "Windows": NaN,
+        "Unnamed: 2": NaN,
+        "VIX_Lower": NaN,
+        "VIX_Upper": NaN,
+        "Regime_Label": NaN
+    },
+    {
+        "Deltas": 40,
+        "Windows": NaN,
+        "Unnamed: 2": NaN,
+        "VIX_Lower": NaN,
+        "VIX_Upper": NaN,
+        "Regime_Label": NaN
+    }
+]

@@ -1,0 +1,56 @@
+{
+  "sticky_strike": {
+    "name": "Sticky Strike",
+    "short": "S&P 500 price impact on constant-strike implied volatilities",
+    "description": "Quantifies the VIX change that is already priced into the volatility markets due to S&P 500 movement. Under the 'sticky strike' rule, when the index moves, implied volatilities at fixed strike prices remain unchanged. This factor captures how much of the VIX change is mechanically explained by the S&P 500 move alone.",
+    "positive": "S&P 500 fell, mechanically pushing VIX higher as the index moves closer to put strikes with higher implied volatility.",
+    "negative": "S&P 500 rose, mechanically pulling VIX lower as the index moves away from high-IV put strikes.",
+    "typical_range": "Usually the dominant factor, ranging from -2 to +2 in normal markets. Can exceed ±3 in sharp moves.",
+    "icon": "📍"
+  },
+  "parallel_shift": {
+    "name": "Parallel Shift",
+    "short": "Broad repricing across the entire implied volatility surface",
+    "description": "Measures the impact of a uniform upward or downward shift of the entire implied volatility curve. This represents a broad repricing of all options — both puts and calls across all strikes — moving together. Often occurs after significant market events or regime shifts.",
+    "positive": "Broad increase in implied volatility across all strikes — traders are paying more for all options, indicating increased uncertainty or fear.",
+    "negative": "Broad decrease in implied volatility across all strikes — a 'vol crush' where the market is pricing in less uncertainty. Common during VIX mean reversion from elevated levels.",
+    "typical_range": "Usually -1 to +1. Can reach ±2 in high-volatility regimes. Less impactful when VIX is low.",
+    "icon": "↕️"
+  },
+  "put_skew": {
+    "name": "Put Skew",
+    "short": "Demand for downside protection via OTM puts",
+    "description": "Measures the change in the slope/steepness of out-of-the-money put implied volatilities relative to at-the-money options. A steepening put skew means traders are paying relatively more for downside protection. This is the classic 'fear' indicator in the volatility surface.",
+    "positive": "Put skew steepened — increased demand for crash protection. Traders are bidding up OTM puts relative to ATM options, pricing in more tail risk.",
+    "negative": "Put skew flattened — reduced demand for crash protection. The market is pricing out extreme downside scenarios.",
+    "typical_range": "Usually -0.5 to +0.5. Spikes above +1 indicate significant fear-driven put buying.",
+    "icon": "📉"
+  },
+  "call_skew": {
+    "name": "Call Skew",
+    "short": "Demand for upside optionality via OTM calls",
+    "description": "Measures the change in the slope of out-of-the-money call implied volatilities. Changes here reflect demand for upside participation or 'FOMO' (fear of missing out). Less commonly a major factor in broad equity indices.",
+    "positive": "Call skew steepened — increased demand for upside calls, possibly indicating speculative bullish positioning or FOMO rally expectations.",
+    "negative": "Call skew flattened — reduced demand for upside calls. Often moves inversely to put skew during fear-driven selloffs as focus shifts to downside protection.",
+    "typical_range": "Usually -0.3 to +0.3. This is typically the smallest contributor to VIX changes.",
+    "icon": "📈"
+  },
+  "downside_convexity": {
+    "name": "Downside Convexity",
+    "short": "Premium for extreme tail-risk protection (deep OTM puts)",
+    "description": "Captures the curvature of the implied volatility curve on the put side — specifically the pricing of deep out-of-the-money puts that protect against extreme market crashes. This goes beyond linear skew and measures the 'wings' of the distribution. High downside convexity means the market is pricing in more extreme tail events.",
+    "positive": "Increased pricing for extreme downside protection — the market is paying more for 'black swan' insurance. Suggests that while demand for immediate protection (put skew) may be moderate, there's meaningful concern about catastrophic scenarios.",
+    "negative": "Reduced pricing for extreme crashes — the market is reducing the premium for deep OTM puts, suggesting less concern about extreme tail events.",
+    "typical_range": "Usually -0.3 to +0.3. Can spike above +1 during market panics.",
+    "icon": "⬇️"
+  },
+  "upside_convexity": {
+    "name": "Upside Convexity",
+    "short": "Premium for extreme upside moves (deep OTM calls)",
+    "description": "Captures the curvature of the implied volatility curve on the call side — the pricing of deep out-of-the-money calls. This measures demand for exposure to extremely large upside moves. Often moves inversely to downside convexity.",
+    "positive": "Increased pricing for extreme upside moves — traders are paying more for deep OTM calls, possibly anticipating a sharp rally or short squeeze.",
+    "negative": "Reduced pricing for extreme upside moves — less demand for deep OTM call protection, consistent with a more fearful market focused on the downside.",
+    "typical_range": "Usually -0.2 to +0.2. Typically the second-smallest contributor.",
+    "icon": "⬆️"
+  }
+}
