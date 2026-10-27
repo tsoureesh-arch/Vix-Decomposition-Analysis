@@ -42,16 +42,33 @@ PULSE_SYMBOLS = [
     {"sym": "^DJI",      "name": "Dow Jones",            "group": "index"},
     {"sym": "^RUT",      "name": "Russell 2000",         "group": "index"},
     {"sym": "^VIX",      "name": "VIX (Spot Volatility)","group": "vol"},
+    {"sym": "^VIX1D",    "name": "VIX 1-Day",            "group": "vol"},
     {"sym": "^VIX9D",    "name": "VIX 9-Day (Short-Term)","group": "vol"},
+    {"sym": "^VIX3M",    "name": "VIX 3-Month",          "group": "vol"},
+    {"sym": "^VIX6M",    "name": "VIX 6-Month",          "group": "vol"},
     {"sym": "^SKEW",     "name": "CBOE Skew Index",      "group": "vol"},
+    {"sym": "^COR1M",    "name": "Cboe 1-Month Implied Correlation","group": "vol"},
     {"sym": "^VVIX",     "name": "VVIX (Vol of Vol)",    "group": "vol"},
+    {"sym": "^VXN",      "name": "Nasdaq 100 Volatility", "group": "vol"},
     {"sym": "2YY=F",     "name": "US 2Y Yield",          "group": "rates"},
+    {"sym": "^FVX",      "name": "US 5Y Yield",          "group": "rates"},
     {"sym": "^TNX",      "name": "US 10Y Yield",         "group": "rates"},
     {"sym": "^TYX",      "name": "US 30Y Yield",         "group": "rates"},
     {"sym": "^IRX",      "name": "US 13W T-Bill",        "group": "rates"},
+    {"sym": "TLT",       "name": "20+Y Treasury ETF",     "group": "rates"},
+    {"sym": "HYG",       "name": "High-Yield Credit Proxy","group": "credit"},
+    {"sym": "LQD",       "name": "Investment-Grade Credit Proxy","group": "credit"},
+    {"sym": "KRE",       "name": "Regional Banks ETF",    "group": "credit"},
     {"sym": "DX-Y.NYB",  "name": "US Dollar Index (DXY)","group": "macro"},
+    {"sym": "JPY=X",     "name": "USD / JPY",            "group": "fx"},
+    {"sym": "EURUSD=X",  "name": "EUR / USD",            "group": "fx"},
+    {"sym": "CNH=X",     "name": "USD / CNH",            "group": "fx"},
+    {"sym": "KRW=X",     "name": "USD / KRW",            "group": "fx"},
     {"sym": "CL=F",      "name": "Crude Oil (WTI)",      "group": "macro"},
+    {"sym": "BZ=F",      "name": "Brent Crude",          "group": "macro"},
     {"sym": "GC=F",      "name": "Gold",                 "group": "macro"},
+    {"sym": "HG=F",      "name": "Copper",               "group": "macro"},
+    {"sym": "NG=F",      "name": "Natural Gas",          "group": "macro"},
     {"sym": "SI=F",      "name": "Silver",               "group": "macro"},
     {"sym": "BTC-USD",   "name": "Bitcoin",              "group": "macro"},
     {"sym": "ETH-USD",   "name": "Ethereum",             "group": "macro"},
@@ -62,6 +79,23 @@ PULSE_SYMBOLS = [
     {"sym": "^FTSE",     "name": "FTSE 100",             "group": "global"},
     {"sym": "^HSI",      "name": "Hang Seng Index",      "group": "global"},
     {"sym": "000001.SS", "name": "Shanghai Composite",   "group": "global"},
+    {"sym": "^STOXX50E", "name": "Euro Stoxx 50",        "group": "global"},
+    {"sym": "^NSEI",     "name": "Nifty 50",             "group": "global"},
+    {"sym": "^AXJO",     "name": "ASX 200",              "group": "global"},
+    {"sym": "^TWII",     "name": "Taiwan Weighted",      "group": "global"},
+    {"sym": "SPY",       "name": "SPDR S&P 500 ETF",     "group": "us"},
+    {"sym": "QQQ",       "name": "Nasdaq 100 ETF",       "group": "us"},
+    {"sym": "IWM",       "name": "Russell 2000 ETF",     "group": "us"},
+    {"sym": "RSP",       "name": "S&P 500 Equal Weight", "group": "us"},
+    {"sym": "NVDA",      "name": "NVIDIA",               "group": "stock"},
+    {"sym": "AAPL",      "name": "Apple",                "group": "stock"},
+    {"sym": "MSFT",      "name": "Microsoft",            "group": "stock"},
+    {"sym": "AMZN",      "name": "Amazon",               "group": "stock"},
+    {"sym": "META",      "name": "Meta",                 "group": "stock"},
+    {"sym": "GOOGL",     "name": "Alphabet",             "group": "stock"},
+    {"sym": "AVGO",      "name": "Broadcom",             "group": "stock"},
+    {"sym": "TSLA",      "name": "Tesla",                "group": "stock"},
+    {"sym": "CRWV",      "name": "CoreWeave",            "group": "stock"},
 ]
 
 _quotes_cache = {"data": None, "ts": 0}
@@ -128,7 +162,7 @@ def fetch_quotes():
         return _quotes_cache["data"]
 
     try:
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=16) as executor:
             out = list(executor.map(_fetch_single_quote, PULSE_SYMBOLS))
         
         payload = {"asof": datetime.now(timezone.utc).isoformat(), "quotes": out}

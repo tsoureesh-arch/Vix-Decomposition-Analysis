@@ -57,6 +57,9 @@
     <button class="tab-btn" data-tab="riskreversal">
       <span class="tab-icon">📈</span> Risk Reversal
     </button>
+    <button class="tab-btn" data-tab="drivers">
+      <span class="tab-icon">🧭</span> Market Drivers
+    </button>
     <button class="tab-btn" data-tab="pulse">
       <span class="tab-icon">🌐</span> Market Pulse
     </button>
@@ -543,6 +546,64 @@
         </div>
       </section>
     </div><!-- /tab: riskreversal -->
+
+    <!-- ==================== TAB: MARKET DRIVERS ==================== -->
+    <div class="tab-panel" data-tab="drivers">
+      <section class="glass-card driver-hero">
+        <div class="section-header driver-title-row">
+          <div>
+            <h2>🧭 Live S&amp;P 500 Driver Board</h2>
+            <p class="section-desc">See the cross-asset signals most likely to matter for US equities right now. Click any item to open its full chart.</p>
+          </div>
+          <div class="driver-refresh-wrap">
+            <span id="drivers-asof" class="date-range-label"></span>
+            <button id="btn-drivers-refresh" class="badge badge-live sync-btn driver-refresh-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.27l3.08-3.08"/></svg>
+              REFRESH
+            </button>
+          </div>
+        </div>
+        <div id="drivers-focus" class="driver-focus">
+          <div class="driver-loading">Scanning markets for the strongest live signals…</div>
+        </div>
+      </section>
+
+      <section class="glass-card">
+        <div class="section-header driver-section-heading">
+          <div>
+            <h2>🔥 Hot Now</h2>
+            <p class="section-desc">Ranked by move size versus a typical day, adjusted for relevance to the S&amp;P 500. This is a market-monitoring heuristic, not proof of causation.</p>
+          </div>
+          <span class="driver-method-badge">LIVE RANKING</span>
+        </div>
+        <div id="drivers-hot" class="driver-hot-grid">
+          <div class="driver-loading">Calculating unusual moves…</div>
+        </div>
+      </section>
+
+      <section class="glass-card">
+        <div class="driver-toolbar">
+          <div id="drivers-filters" class="driver-filter-row">
+            <button class="driver-filter active" data-category="all">All</button>
+            <button class="driver-filter" data-category="vol">Volatility</button>
+            <button class="driver-filter" data-category="rates">Rates &amp; Credit</button>
+            <button class="driver-filter" data-category="fx">FX</button>
+            <button class="driver-filter" data-category="commodity">Commodities</button>
+            <button class="driver-filter" data-category="global">Global</button>
+            <button class="driver-filter" data-category="stock">Stocks</button>
+            <button class="driver-filter" data-category="us">US Breadth</button>
+          </div>
+          <label class="driver-search-wrap">
+            <span>⌕</span>
+            <input id="drivers-search" type="search" placeholder="Search KOSPI, USD/JPY, CoreWeave…" autocomplete="off">
+          </label>
+        </div>
+        <div id="drivers-sections" class="driver-sections">
+          <div class="driver-loading">Loading the driver board…</div>
+        </div>
+        <p class="driver-data-note"><strong>Credit note:</strong> HYG and LQD are liquid market proxies for credit stress. They are not live CDS quotes. Free real-time single-name CDS data is not publicly available.</p>
+      </section>
+    </div><!-- /tab: drivers -->
 
     <!-- ==================== TAB: MARKET PULSE ==================== -->
     <div class="tab-panel" data-tab="pulse">
@@ -1045,6 +1106,7 @@
   <script src="src/strategy.js?v=3"></script>
   <script src="src/rr_analysis.js?v=3"></script>
   <script src="src/market_pulse.js?v=4"></script>
+  <script src="src/market_drivers.js?v=1"></script>
   <script src="src/calendar.js?v=1"></script>
   <script src="src/vix_term.js?v=2"></script>
   <script src="src/stocks_econ.js?v=1"></script>
