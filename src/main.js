@@ -104,6 +104,10 @@
           if (target === 'pulse') window.MarketPulse.activate();
           else window.MarketPulse.deactivate();
         }
+        if (window.MarketDrivers) {
+          if (target === 'drivers') window.MarketDrivers.activate();
+          else window.MarketDrivers.deactivate();
+        }
         if (window.VixTerm) {
           if (target === 'vixterm') window.VixTerm.activate();
           else window.VixTerm.deactivate();
@@ -1295,6 +1299,7 @@
     initSearchScope();
     addFilterRule();
     if (window.MarketPulse) window.MarketPulse.init();
+    if (window.MarketDrivers) window.MarketDrivers.init();
     if (window.VixTerm) window.VixTerm.init();
     if (window.StocksEcon) window.StocksEcon.init();
   } catch (err) {

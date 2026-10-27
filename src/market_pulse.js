@@ -506,12 +506,12 @@
     return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
   }
 
-  async function openChartModal(symbol, name) {
+  async function openChartModal(symbol, name, liveQuote = null) {
     activeSymbol = symbol;
     $('modal-chart-title').textContent = `${name || symbol} (${symbol})`;
     
     // Live price header
-    const quote = lastQuotes ? lastQuotes[symbol] : null;
+    const quote = liveQuote || (lastQuotes ? lastQuotes[symbol] : null);
     if (quote && quote.ok) {
       const dp = Math.abs(quote.price) < 10 ? 3 : 2;
       $('modal-chart-live-price').textContent = `${fmtNum(quote.price, dp)} ${quote.currency || ''}`;
@@ -771,5 +771,5 @@
     if (active && active.dataset.tab === 'pulse') activate();
   }
 
-  window.MarketPulse = { init, activate, deactivate };
+  window.MarketPulse = { init, activate, deactivate, openChart: openChartModal };
 })();
