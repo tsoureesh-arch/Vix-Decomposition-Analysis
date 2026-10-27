@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketScope — S&P 500 & Volatility Dashboard</title>
+  <meta name="description" content="Analyze CBOE VIX decomposition factors with historical data, natural language explanations, and pattern matching.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="src/styles.css?v=5">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#1e293b">
+</head>
+<body>
+  <!-- Header -->
+  <header id="app-header">
+    <div class="header-inner">
+      <div class="logo-area">
+        <div class="logo-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="url(#grad1)"/>
+            <path d="M8 22L12 12L16 18L20 8L24 16" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs><linearGradient id="grad1" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6C5CE7"/><stop offset="1" stop-color="#00B894"/></linearGradient></defs>
+          </svg>
+        </div>
+        <div>
+          <h1>MarketScope</h1>
+          <p class="subtitle">S&P 500 Futures · Volatility · Macro · Live News</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <button id="btn-sync-data" class="badge badge-live sync-btn" style="cursor:pointer; border:none; display:flex; align-items:center; gap:6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.27l3.08-3.08"/></svg>
+          SYNC DATA
+        </button>
+        <button id="btn-theme-toggle" class="theme-toggle" title="Toggle Light/Dark Mode">🌙</button>
+        <span class="badge badge-beta">BETA</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tab Bar -->
+  <nav class="tab-bar" id="tab-bar">
+    <button class="tab-btn active" data-tab="dashboard">
+      <span class="tab-icon">📊</span> Dashboard
+    </button>
+    <button class="tab-btn" data-tab="askdata">
+      <span class="tab-icon">✨</span> Ask Data
+    </button>
+    <button class="tab-btn" data-tab="compare">
+      <span class="tab-icon">⚖️</span> Compare
+    </button>
+    <button class="tab-btn" data-tab="search">
+      <span class="tab-icon">🔍</span> Pattern Search
+    </button>
+    <button class="tab-btn" data-tab="riskreversal">
+      <span class="tab-icon">📈</span> Risk Reversal
+    </button>
+    <button class="tab-btn" data-tab="pulse">
+      <span class="tab-icon">🌐</span> Market Pulse
+    </button>
+    <button class="tab-btn" data-tab="vixterm">
+      <span class="tab-icon">🎢</span> VIX Term Curve
+    </button>
+    <button class="tab-btn" data-tab="calendar">
+      <span class="tab-icon">📅</span> Market Calendar
+    </button>
+    <button class="tab-btn" data-tab="stocks">
+      <span class="tab-icon">🏢</span> Stocks &amp; Earnings
+    </button>
+    <button class="tab-btn" data-tab="economics">
+      <span class="tab-icon">📊</span> Economic Data
+    </button>
+  </nav>
+
+  <main id="app-main">
+
+    <!-- ==================== TAB: DASHBOARD ==================== -->
+    <div class="tab-panel active" data-tab="dashboard">
+
+      <!-- Date Navigation -->
+      <section id="date-nav" class="glass-card">
+        <div class="section-header">
+          <h2>📅 Select Trading Date</h2>
+          <span id="date-range-label" class="date-range-label"></span>
+        </div>
+        <div class="date-nav-row">
+          <button id="btn-prev-date" class="date-nav-btn" title="Previous Date">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 4L6 10L12 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="date-select-wrapper">
+            <select id="date-select" class="date-select"></select>
+          </div>
+          <button id="btn-next-date" class="date-nav-btn" title="Next Date">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M8 4L14 10L8 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <div class="date-counter" id="date-counter"></div>
+        </div>
+      </section>
+
+      <!-- Main Dashboard Grid -->
+      <div class="dashboard-grid">
+        <!-- Market Overview -->
+        <section id="market-overview" class="glass-card">
+          <div class="section-header">
+            <h2>📊 Market Overview</h2>
+            <span id="market-context-badge" class="context-badge"></span>
+          </div>
+          <div class="overview-grid">
+            <div class="metric-card" id="spx-card">
+              <div class="metric-label">S&P 500</div>
+              <div class="metric-values">
+                <span class="metric-from" id="spx-from"></span>
+                <span class="metric-arrow">→</span>
+                <span class="metric-to" id="spx-to"></span>
+              </div>
+              <div class="metric-change" id="spx-change"></div>
+              <div class="metric-hl">
+                O: <span id="spx-open">--</span> &nbsp;|&nbsp;
+                H: <span id="spx-high">--</span> &nbsp;|&nbsp;
+                L: <span id="spx-low">--</span> &nbsp;|&nbsp;
+                C: <span id="spx-close">--</span>
+              </div>
+            </div>
+            <div class="metric-card" id="vix-card">
+              <div class="metric-label">VIX Index</div>
+              <div class="metric-values">
+                <span class="metric-from" id="vix-from"></span>
+                <span class="metric-arrow">→</span>
+                <span class="metric-to" id="vix-to"></span>
+              </div>
+              <div class="metric-change" id="vix-change"></div>
+              <div class="metric-hl">
+                O: <span id="vix-open">--</span> &nbsp;|&nbsp;
+                H: <span id="vix-high">--</span> &nbsp;|&nbsp;
+                L: <span id="vix-low">--</span> &nbsp;|&nbsp;
+                C: <span id="vix-close">--</span>
+              </div>
+            </div>
+            <div class="metric-card" id="skew-card">
+              <div class="metric-label">CBOE SKEW Index</div>
+              <div class="metric-values">
+                <span class="metric-from" id="skew-from"></span>
+                <span class="metric-arrow">→</span>
+                <span class="metric-to" id="skew-to"></span>
+              </div>
+              <div class="metric-change" id="skew-change"></div>
+              <div class="metric-hl">
+                O: <span id="skew-open">--</span> &nbsp;|&nbsp;
+                H: <span id="skew-high">--</span> &nbsp;|&nbsp;
+                L: <span id="skew-low">--</span> &nbsp;|&nbsp;
+                C: <span id="skew-close">--</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Decomposition Factors Table -->
+        <section id="decomp-table-section" class="glass-card">
+          <div class="section-header">
+            <h2>🔬 VIX Decomposition Factors</h2>
+          </div>
+          <div class="decomp-table-wrapper">
+            <table id="decomp-table">
+              <thead>
+                <tr>
+                  <th>Factor</th>
+                  <th>Value</th>
+                  <th>Contribution</th>
+                  <th class="info-col">Info</th>
+                </tr>
+              </thead>
+              <tbody id="decomp-tbody"></tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td><strong>Total VIX Change</strong></td>
+                  <td id="total-value" class="factor-value"></td>
+                  <td id="total-bar-cell"></td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+
+        <!-- Waterfall Chart -->
+        <section id="waterfall-section" class="glass-card">
+          <div class="section-header">
+            <h2>📈 Factor Contribution Waterfall</h2>
+          </div>
+          <div class="chart-container">
+            <canvas id="waterfall-chart"></canvas>
+          </div>
+        </section>
+
+        <!-- Volatility Curve Chart -->
+        <section id="vol-curve-section" class="glass-card">
+          <div class="section-header">
+            <h2>📉 Implied Volatility Curve (Smile vs Smirk)</h2>
+          </div>
+          <div class="chart-container" style="position: relative; height: 300px;">
+            <canvas id="vol-curve-chart"></canvas>
+          </div>
+          <p class="chart-caption" id="vol-curve-caption" style="text-align: center; color: var(--text-muted); font-size: 0.9em; margin-top: 10px;"></p>
+        </section>
+
+        <!-- Analysis Panel -->
+        <section id="analysis-section" class="glass-card analysis-card">
+          <div class="section-header">
+            <h2 id="analysis-title">🧠 Analysis of respective date</h2>
+          </div>
+          <div id="analysis-text" class="analysis-text"></div>
+        </section>
+
+        <!-- Macro & Notes Panel -->
+        <section id="macro-notes-section" class="glass-card analysis-card macro-notes-card">
+          <div class="macro-synopsis">
+            <div class="section-header">
+              <h2>📰 Daily Macro Synopsis</h2>
+            </div>
+            <div id="macro-text" class="macro-text analysis-text"></div>
+          </div>
+          <div class="user-notes">
+            <div class="section-header">
+              <h2>📝 My Observations</h2>
+            </div>
+            <textarea id="user-notes-input" class="notes-textarea" placeholder="Add your own notes, patterns, or analysis for this date... This is saved locally in your browser."></textarea>
+          </div>
+        </section>
+
+        <!-- Strategy & Percentile Panel -->
+        <section id="strategy-section" class="glass-card analysis-card">
+          <div class="section-header">
+            <h2>💡 Vol-Based Strategy Signals & Percentiles</h2>
+          </div>
+          <div id="strategy-content"></div>
+        </section>
+      </div><!-- /dashboard-grid -->
+
+    </div><!-- /tab: dashboard -->
+
+    <!-- ==================== TAB: ASK DATA ==================== -->
+    <div class="tab-panel" data-tab="askdata">
+      <section class="glass-card query-workspace">
+        <div class="section-header">
+          <div>
+            <h2>✨ Ask the VIX Data</h2>
+            <p class="section-desc">Ask a plain-English question and explore matching trading days, outcomes, and charts.</p>
+          </div>
+          <span class="query-data-badge" id="query-data-count"></span>
+        </div>
+
+        <form id="query-form" class="query-form">
+          <label class="sr-only" for="query-input">Ask about the VIX data</label>
+          <input id="query-input" class="query-input" autocomplete="off" placeholder="e.g. Show Mondays where VIX fell, with a graph" />
+          <button class="btn btn-primary query-submit" type="submit">Analyze</button>
+        </form>
+
+        <div class="query-examples" aria-label="Example questions">
+          <span>Try:</span>
+          <button type="button" class="query-example">Give me Monday analysis</button>
+          <button type="button" class="query-example">Plot the Monday change in VIX</button>
+          <button type="button" class="query-example">When call skew fell 0.2 and next day market was down</button>
+          <button type="button" class="query-example">When market fell, what happened the next day?</button>
+        </div>
+
+        <div id="query-empty" class="query-empty">
+          <div class="query-empty-icon">⌁</div>
+          <strong>Explore your historical VIX decomposition data</strong>
+          <p>Use weekdays, factor moves, market direction, and next-trading-day outcomes in the same question.</p>
+        </div>
+
+        <div id="query-results" class="query-results hidden" aria-live="polite">
+          <div id="query-summary" class="query-summary"></div>
+          <div id="query-chart-wrap" class="query-chart-wrap hidden">
+            <div class="chart-container"><canvas id="query-chart"></canvas></div>
+          </div>
+          <div class="decomp-table-wrapper query-table-wrap">
+            <table class="data-table">
+              <thead id="query-table-head"></thead>
+              <tbody id="query-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div><!-- /tab: askdata -->
+
+    <!-- ==================== TAB: COMPARE ==================== -->
+    <div class="tab-panel" data-tab="compare">
+      <section class="glass-card">
+        <div class="section-header">
+          <h2>⚖️ Multi-Date Comparison</h2>
+          <p class="section-desc">Select up to 5 dates. Compare metrics, similarity, and macro context side-by-side.</p>
+        </div>
+
+        <!-- Date Selector -->
+        <div class="compare-date-selector">
+          <div class="compare-date-tags" id="compare-tags"></div>
+          <div class="compare-add-wrapper">
+            <select id="compare-add-select" class="date-select" style="font-size:0.82rem; padding:8px 14px;">
+              <option value="">+ Add date...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Metric Selector -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;">Choose Metrics</div>
+          <div class="metric-selector" id="compare-metric-selector"></div>
+        </div>
+
+        <!-- Comparison Table -->
+        <div class="decomp-table-wrapper">
+          <table class="data-table" id="compare-table">
+            <thead id="compare-thead"></thead>
+            <tbody id="compare-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Similarity Matrix -->
+        <div class="similarity-matrix" id="similarity-section" style="margin-top:24px;">
+          <div class="section-header">
+            <h2>🔗 Similarity Matrix</h2>
+            <p class="section-desc">Cosine similarity across decomposition factors (100% = identical profile)</p>
+          </div>
+          <div id="similarity-grid"></div>
+        </div>
+
+        <!-- Macro Synopsis for each date -->
+        <div id="compare-macros" class="compare-macros" style="margin-top:24px;"></div>
+      </section>
+    </div><!-- /tab: compare -->
+
+    <!-- ==================== TAB: PATTERN SEARCH ==================== -->
+    <div class="tab-panel" data-tab="search">
+      <section class="glass-card filter-section">
+        <div class="section-header">
+          <div>
+            <h2>🔍 Historical Pattern Search</h2>
+            <p class="section-desc">Choose the sample first, then combine market and volatility conditions.</p>
+          </div>
+          <span id="scope-match-count" class="scope-match-count"></span>
+        </div>
+
+        <div class="search-scope-card">
+          <div class="search-step-heading">
+            <span class="search-step-number">1</span>
+            <div>
+              <h3>Choose the historical sample</h3>
+              <p>Limit the search by time, weekday, or a scheduled market event.</p>
+            </div>
+          </div>
+
+          <div class="search-scope-grid">
+            <label class="search-control">
+              <span>Date range</span>
+              <select id="search-range-preset">
+                <option value="all">All available data</option>
+                <option value="ytd">Year to date</option>
+                <option value="3m">Last 3 months</option>
+                <option value="6m">Last 6 months</option>
+                <option value="1y">Last 1 year</option>
+                <option value="custom">Custom range</option>
+              </select>
+            </label>
+
+            <label class="search-control">
+              <span>From</span>
+              <input id="search-date-from" type="date">
+            </label>
+
+            <label class="search-control">
+              <span>To</span>
+              <input id="search-date-to" type="date">
+            </label>
+
+            <label class="search-control">
+              <span>Weekday</span>
+              <select id="search-weekday">
+                <option value="any">Any trading day</option>
+                <option value="1">Monday only</option>
+                <option value="2">Tuesday only</option>
+                <option value="3">Wednesday only</option>
+                <option value="4">Thursday only</option>
+                <option value="5">Friday only</option>
+              </select>
+            </label>
+
+            <label class="search-control">
+              <span>Event day</span>
+              <select id="search-event">
+                <option value="any">Any event / no event filter</option>
+                <option value="nfp">NFP release</option>
+                <option value="cpi">CPI release</option>
+                <option value="ppi">PPI release</option>
+                <option value="pce">PCE release</option>
+                <option value="fomc">FOMC decision</option>
+                <option value="opex">Options expiration</option>
+                <option value="vix_expiry">VIX expiration</option>
+                <option value="high_impact">Any high-impact event</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="search-scope-note" class="search-scope-note" aria-live="polite"></div>
+        </div>
+
+        <div class="search-step-heading search-rules-heading">
+          <span class="search-step-number">2</span>
+          <div>
+            <h3>Define the pattern</h3>
+            <p>Add one or more conditions, or search the selected sample without any rule.</p>
+          </div>
+        </div>
+
+        <div class="filter-controls">
+          <div id="filter-rules" class="filter-rules"></div>
+          <div class="filter-actions">
+            <button id="btn-add-rule" class="btn btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              Add Rule
+            </button>
+            <button id="btn-find-similar" class="btn btn-accent">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4" stroke="currentColor" stroke-width="2"/><path d="M10 10L14 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              Find Similar to Selected
+            </button>
+            <button id="btn-search" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8H14M10 4L14 8L10 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Run Pattern Search
+            </button>
+            <button id="btn-clear-filters" class="btn btn-ghost">Clear All</button>
+          </div>
+        </div>
+
+        <div id="search-results" class="search-results hidden">
+          <div class="results-header">
+            <div class="results-header-left">
+              <h3 id="results-title">Search Results</h3>
+              <span id="results-count" class="results-count"></span>
+            </div>
+            <div class="results-sort">
+              <label for="sort-results">Sort by:</label>
+              <select id="sort-results">
+                <option value="date_desc">Newest First</option>
+                <option value="date_asc">Oldest First</option>
+                <option value="vix_spike">Max VIX Spike</option>
+                <option value="vix_crush">Max VIX Crush</option>
+                <option value="spx_rally">Max SPX Rally</option>
+                <option value="spx_selloff">Max SPX Selloff</option>
+                <option value="similarity">Most Similar</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="search-insights" class="search-insights" aria-live="polite"></div>
+
+          <section id="search-chart-panel" class="search-chart-panel hidden" aria-label="Pattern result chart">
+            <div class="search-chart-header">
+              <div>
+                <h3>Plot the matching days</h3>
+                <p>Choose one or two series. Scatter view compares Series A against Series B.</p>
+              </div>
+              <div id="search-chart-sample" class="search-chart-sample"></div>
+            </div>
+            <div class="search-chart-controls">
+              <label class="search-control">
+                <span>Chart</span>
+                <select id="search-chart-type">
+                  <option value="line">Timeline</option>
+                  <option value="bar">Bars</option>
+                  <option value="scatter">Scatter</option>
+                </select>
+              </label>
+              <label class="search-control">
+                <span>Series A</span>
+                <select id="search-chart-primary"></select>
+              </label>
+              <label class="search-control">
+                <span>Series B</span>
+                <select id="search-chart-secondary"></select>
+              </label>
+              <button id="btn-update-search-chart" class="btn btn-secondary" type="button">Update chart</button>
+            </div>
+            <div class="search-chart-canvas">
+              <canvas id="search-results-chart"></canvas>
+            </div>
+            <p id="search-chart-note" class="search-chart-note"></p>
+          </section>
+
+          <div id="results-list" class="results-list"></div>
+        </div>
+      </section>
+    </div><!-- /tab: search -->
+
+    <!-- ==================== TAB: RISK REVERSAL ==================== -->
+    <div class="tab-panel" data-tab="riskreversal">
+      <section class="glass-card">
+        <div class="section-header">
+          <h2>📈 30-DTE 25-Delta Risk Reversal Model</h2>
+          <p class="section-desc">Analyze historical pricing and implied volatility, and run scenario models based on VIX.</p>
+        </div>
+        
+        <div class="rr-dashboard-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+          <!-- Model Inputs -->
+          <div class="glass-card" style="background: rgba(255,255,255,0.02);">
+            <h3 style="margin-top:0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">VIX Scenario Model</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">Enter a VIX level to predict the expected Price and Implied Volatility of a 30-day 25-delta Risk Reversal structure using a linear regression model.</p>
+            
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+              <label for="vix-input" style="font-weight: 600;">Target VIX:</label>
+              <input type="number" id="vix-input" value="18.0" step="0.1" style="background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color); padding: 8px 12px; border-radius: 6px; font-size: 1rem; width: 100px;">
+              <button id="btn-run-model" class="btn btn-primary" style="background: linear-gradient(135deg, #6C5CE7, #00B894); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;">Run Model</button>
+            </div>
+            
+            <div id="model-results" class="model-results" style="display: flex; gap: 16px;">
+              <div class="metric-card" style="flex: 1; margin: 0; background: var(--bg-color); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div class="metric-label" style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Expected Price</div>
+                <div class="metric-values" style="font-size: 1.8rem; font-weight: 700; color: #00B894;" id="rr-pred-price">--</div>
+              </div>
+              <div class="metric-card" style="flex: 1; margin: 0; background: var(--bg-color); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div class="metric-label" style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Expected IV</div>
+                <div class="metric-values" style="font-size: 1.8rem; font-weight: 700; color: #6C5CE7;" id="rr-pred-iv">--</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Current Stats / Scatter Context -->
+          <div class="glass-card" style="background: rgba(255,255,255,0.02);">
+            <h3 style="margin-top:0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">Model Correlation (VIX vs Price)</h3>
+            <div class="chart-container" style="position: relative; height: 220px;">
+              <canvas id="rr-scatter-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historical Timeline -->
+        <div class="glass-card" style="background: rgba(255,255,255,0.02);">
+          <h3 style="margin-top:0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">Historical Timeline</h3>
+          <div class="chart-container" style="position: relative; height: 350px;">
+            <canvas id="rr-timeline-chart"></canvas>
+          </div>
+        </div>
+      </section>
+    </div><!-- /tab: riskreversal -->
+
+    <!-- ==================== TAB: MARKET PULSE ==================== -->
+    <div class="tab-panel" data-tab="pulse">
+
+      <section class="glass-card">
+        <div class="section-header">
+          <h2>🌐 Market Pulse — S&P 500 Drivers</h2>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span id="pulse-asof" class="date-range-label"></span>
+            <button id="btn-pulse-refresh" class="badge badge-live sync-btn" style="cursor:pointer; border:none; display:flex; align-items:center; gap:6px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.27l3.08-3.08"/></svg>
+              REFRESH
+            </button>
+          </div>
+        </div>
+        <p class="section-desc">Live indices, futures, rates, and the news the market is watching. Auto-refreshes every 60s while this tab is open. Free data sources — for information only, not investment advice.</p>
+      </section>
+
+      <!-- AI / Auto Digest -->
+      <section class="glass-card analysis-card" id="pulse-digest-card">
+        <div class="section-header">
+          <h2>🧠 Today's Market Read</h2>
+          <span class="context-badge" id="pulse-regime-badge">—</span>
+        </div>
+        <div id="pulse-digest" class="analysis-text">Loading market read…</div>
+      </section>
+
+      <!-- Quotes grids -->
+      <section class="glass-card">
+        <div class="section-header"><h2>📈 S&P 500 Futures & Index</h2></div>
+        <div class="pulse-grid" id="pulse-grid-core"></div>
+      </section>
+
+      <section class="glass-card">
+        <div class="section-header"><h2>🧭 Macro Drivers (Rates · Dollar · Oil · Gold · Crypto · MOVE)</h2></div>
+        <div class="pulse-grid" id="pulse-grid-macro"></div>
+      </section>
+
+      <section class="glass-card">
+        <div class="section-header"><h2>🌐 Global/International Indices (KOSPI · Nikkei · DAX · FTSE · Hang Seng)</h2></div>
+        <div class="pulse-grid" id="pulse-grid-global"></div>
+      </section>
+
+      <div class="dashboard-grid">
+        <section class="glass-card">
+          <div class="section-header"><h2>🏦 Fed Funds & Treasury Rates</h2></div>
+          <div id="pulse-rates"></div>
+        </section>
+
+        <section class="glass-card">
+          <div class="section-header"><h2>📅 Key Events Ahead (FOMC & Data)</h2></div>
+          <div id="pulse-calendar"></div>
+        </section>
+
+        <section class="glass-card">
+          <div class="section-header"><h2>💬 Retail Social Sentiment (StockTwits)</h2></div>
+          <div id="pulse-sentiment"></div>
+        </section>
+
+        <section class="glass-card">
+          <div class="section-header"><h2>🔥 Hot News the Market Is Watching</h2></div>
+          <div id="pulse-news" class="pulse-news-list"></div>
+        </section>
+      </div>
+
+    </div><!-- /tab: pulse -->
+
+    <!-- ==================== TAB: VIX TERM STRUCTURE ==================== -->
+    <div class="tab-panel" data-tab="vixterm">
+      <section class="glass-card">
+        <div class="section-header">
+          <h2>🎢 VIX Futures Term Structure & Forward Volatility</h2>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span id="vixterm-status" style="font-size:12px;"></span>
+            <span id="vixterm-asof" class="date-range-label"></span>
+            <button id="btn-vixterm-refresh" class="badge badge-live sync-btn" style="cursor:pointer; border:none; display:flex; align-items:center; gap:6px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.27l3.08-3.08"/></svg>
+              REFRESH
+            </button>
+          </div>
+        </div>
+        <p class="section-desc">Observe the VIX futures curve, spreads, contango, and calculated implied forward volatilities. Live data is fetched from VIX Central and refreshed every minute. Historical curve goes back 5 years.</p>
+      </section>
+
+      <!-- Controls & Chart Grid -->
+      <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr; margin-bottom: 20px;">
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <section class="glass-card">
+            <div class="section-header"><h2>📊 Futures Curve & Implied Volatility Plot</h2></div>
+            <!-- Vol Surface Pill Bar -->
+            <div id="vixterm-vol-bar" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;"></div>
+            <div class="chart-container" style="position: relative; height: 360px;">
+              <canvas id="vixterm-curve-chart"></canvas>
+            </div>
+          </section>
+
+          <!-- New Insights Card -->
+          <section class="glass-card">
+            <div class="section-header"><h2>💡 VIX Curve Insights</h2></div>
+            <div id="vixterm-insights-content" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted); padding: 8px;">
+               <span style="color:var(--text-muted);">Analyzing curve...</span>
+            </div>
+          </section>
+        </div>
+
+        <section class="glass-card">
+          <div class="section-header"><h2>⚙️ Controls & Options</h2></div>
+          <div class="control-group" style="margin-bottom: 20px;">
+            <label class="control-label" style="display:block; margin-bottom: 8px; font-weight:600;">Data Source Mode</label>
+            <div style="display:flex; gap:8px;">
+              <button id="btn-vixterm-mode-live" class="badge badge-live active" style="flex:1; text-align:center; padding: 8px; cursor:pointer;">LIVE DATA</button>
+              <button id="btn-vixterm-mode-hist" class="badge badge-live" style="flex:1; text-align:center; padding: 8px; cursor:pointer; background:transparent; border:1px solid var(--accent); color:var(--text);">HISTORICAL</button>
+            </div>
+          </div>
+
+          <div id="vixterm-date-picker-wrap" class="control-group" style="margin-bottom: 20px; display: none; flex-direction:column; gap:12px;">
+            <!-- Primary Date Group -->
+            <div id="vixterm-primary-date-group">
+              <label class="control-label" style="font-weight:600; display:block; margin-bottom:4px;">Primary Date:</label>
+              <input type="date" id="vixterm-date-input" style="width:100%; padding: 8px; border-radius: 6px; background: var(--bg-inset); border: 1px solid var(--glass-border); color: var(--text-primary); outline:none;">
+            </div>
+
+            <!-- Comparison Date Group -->
+            <div id="vixterm-compare-date-group" style="width:100%;">
+              <label class="control-label" style="font-weight:600; display:block; margin-bottom:4px;">Compare Date:</label>
+              <div style="display:flex; gap:8px; width:100%;">
+                <input type="date" id="vixterm-compare-date-input" style="flex:1; padding: 8px; border-radius: 6px; background: var(--bg-inset); border: 1px solid var(--glass-border); color: var(--text-primary); outline:none;">
+                <button id="btn-vixterm-add-date" class="badge" style="padding: 8px 12px; cursor:pointer; background: var(--accent-blue); border:none; color:#fff; border-radius:6px; font-weight:600;">+ ADD</button>
+              </div>
+            </div>
+
+            <div id="vixterm-compare-list" style="display:flex; flex-direction:column; gap:6px; margin-top:4px; max-height: 150px; overflow-y: auto; padding-right: 4px;">
+              <!-- List of added historical dates with delete buttons -->
+            </div>
+          </div>
+
+          <div class="control-group" style="margin-bottom: 20px;">
+            <label class="control-label" style="display:block; margin-bottom: 8px; font-weight:600;">Plot Series</label>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="chk-vix-futures" checked> VIX Futures Curve (F1 - F8)
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="chk-vix-spot" checked> VIX Spot Index
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="chk-fwd-vol" checked> Forward Volatility
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="chk-prev-close"> Previous Close
+              </label>
+            </div>
+          </div>
+
+          <div class="control-group" style="margin-bottom: 20px;">
+            <label class="control-label" style="display:block; margin-bottom: 8px; font-weight:600;">Key Indices</label>
+            <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-muted)">Spot VIX:</span>
+                <span id="vixterm-spot-vix" class="mono" style="font-weight:700; color:#f87171;">--</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-muted)">VXV (93-Day):</span>
+                <span id="vixterm-vxv" class="mono" style="font-weight:600;">--</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-muted)">VXV / VIX Ratio:</span>
+                <span id="vixterm-ratio" class="mono" style="font-weight:600;">--</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label class="control-label" style="display:block; margin-bottom: 8px; font-weight:600;">Roll Metrics</label>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
+              <div style="display:flex; justify-content:space-between;">
+                <span>F2 - F1 Spread:</span>
+                <span id="vixterm-f2-f1" class="mono vt-metric-val" style="font-weight:600;">--</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span>F2/F1 Contango:</span>
+                <span id="vixterm-contango-pct" class="mono vt-metric-val" style="font-weight:600;">--</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span>Roll Yield (Ann.):</span>
+                <span id="vixterm-roll-yield" class="mono vt-metric-val" style="font-weight:600;">--</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Futures & Forward Vol Table -->
+      <section class="glass-card">
+        <div class="section-header"><h2>📋 Term Structure & Calculations Table</h2></div>
+        <div class="table-container" style="overflow-x:auto;">
+          <table class="data-table" id="vixterm-table">
+            <thead>
+              <tr>
+                <th>Contract</th>
+                <th>Month</th>
+                <th>Ticker/Symbol</th>
+                <th>Expiration Date</th>
+                <th>Days to Expiration (D)</th>
+                <th>Price ($)</th>
+                <th>Difference ($)</th>
+                <th>Contango %</th>
+                <th>Forward Volatility</th>
+              </tr>
+            </thead>
+            <tbody id="vixterm-table-body">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- ==================== TAB: MARKET CALENDAR ==================== -->
+    <div class="tab-panel" data-tab="calendar">
+      <section class="glass-card">
+        <div class="section-header">
+          <h2>📅 Market Calendar & Events</h2>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <button id="btn-cal-refresh" class="badge badge-live sync-btn" style="cursor:pointer; border:none; display:flex; align-items:center; gap:6px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.27l3.08-3.08"/></svg>
+              RELOAD
+            </button>
+          </div>
+        </div>
+        <p class="section-desc">Track economic data, Fed decisions, corporate earnings, and key S&P 500 dates like VIX expiration. View expected consensus and how deviations might impact the market.</p>
+      </section>
+
+      <!-- Calendar Filters -->
+      <section class="glass-card filter-section" style="padding: 16px 24px;">
+        <div class="metric-selector" id="calendar-filters" style="margin:0; flex-wrap: wrap;">
+          <button class="metric-chip selected" data-filter="all">All Events</button>
+          <button class="metric-chip" data-filter="economic">Economic</button>
+          <button class="metric-chip" data-filter="fed">Fed / Central Bank</button>
+          <button class="metric-chip" data-filter="earnings">Earnings</button>
+          <button class="metric-chip" data-filter="opex">Opex & Expirations</button>
+          <button class="metric-chip" data-filter="rebalance">Index Rebalances</button>
+          <button class="metric-chip" data-filter="short_interest">Short Interest</button>
+          <button class="metric-chip" data-filter="holiday">Holidays</button>
+        </div>
+      </section>
+
+      <!-- Calendar Layout Container -->
+      <div class="calendar-layout" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        
+        <!-- Main Calendar Card -->
+        <section class="glass-card" style="min-height: 500px; display: flex; flex-direction: column;">
+          <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <h2 id="calendar-view-title" style="margin: 0; font-size: 1.25rem;">Market Calendar</h2>
+              <!-- Month selection controls (shown in Grid View) -->
+              <div id="calendar-month-selector" style="display: flex; align-items: center; gap: 8px;">
+                <button id="btn-cal-prev-month" class="badge sync-btn" style="cursor:pointer; border:none; padding:4px 8px; font-weight:700;">&lt;</button>
+                <select id="calendar-month-select" style="padding: 4px 8px; font-weight: 600; width: 145px; border-radius: 4px; background: var(--bg-inset); color: var(--text-primary); border: 1px solid var(--glass-border); outline: none;">
+                  <option value="0">January 2026</option>
+                  <option value="1">February 2026</option>
+                  <option value="2">March 2026</option>
+                  <option value="3">April 2026</option>
+                  <option value="4">May 2026</option>
+                  <option value="5">June 2026</option>
+                  <option value="6">July 2026</option>
+                  <option value="7">August 2026</option>
+                  <option value="8">September 2026</option>
+                  <option value="9">October 2026</option>
+                  <option value="10">November 2026</option>
+                  <option value="11">December 2026</option>
+                </select>
+                <button id="btn-cal-next-month" class="badge sync-btn" style="cursor:pointer; border:none; padding:4px 8px; font-weight:700;">&gt;</button>
+              </div>
+            </div>
+            <!-- Toggle buttons -->
+            <div class="metric-selector" style="margin: 0; padding: 2px; background: rgba(0,0,0,0.2); border-radius: 6px; display: flex; gap: 2px;">
+              <button id="btn-view-grid" class="metric-chip selected" style="padding: 6px 12px; font-size: 0.8rem; margin:0; border-radius:4px;">📅 Grid View</button>
+              <button id="btn-view-list" class="metric-chip" style="padding: 6px 12px; font-size: 0.8rem; margin:0; border-radius:4px;">📋 List View</button>
+            </div>
+          </div>
+          
+          <!-- Month Grid View Container -->
+          <div id="calendar-grid-view" class="calendar-grid-view">
+            <!-- Grid populated by JS -->
+          </div>
+
+          <!-- List View Container (hidden by default) -->
+          <div id="calendar-list" class="calendar-list-container" style="display: none;">
+            <!-- Events populated by JS -->
+          </div>
+
+          <!-- Legend Card matching Nasdaq PDF (only visible in Grid View) -->
+          <div id="calendar-legend" class="calendar-legend-container" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--glass-border); font-size: 0.8rem;">
+            <div style="font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Calendar Legend</div>
+            <div class="legend-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px 16px;">
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-dot holiday-dot"></span> Exchange Holiday</div>
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-ring early-close-ring"></span> Early Close (1PM ET)</div>
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-ring opex-ring"></span> Monthly Options Expiry</div>
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-ring triple-witch-ring"></span> Triple Witch Expiration</div>
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-ring vix-expiry-ring"></span> VIX Expiration</div>
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-dot fed-dot"></span> Fed FOMC Meeting</div>
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-dot eco-dot"></span> Economic Release</div>
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-dot earnings-dot"></span> Corporate Earnings</div>
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-dot rebalance-dot"></span> Index Rebalance / Rank</div>
+              <div class="legend-item" style="display:flex; align-items:center; gap:8px;"><span class="legend-square short-interest-square"></span> Short Interest Release</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right Sidebar: This Week / Details -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          
+          <section class="glass-card analysis-card" style="border-top: 3px solid var(--accent-blue);">
+            <div class="section-header">
+              <h2>🔥 Focus This Week</h2>
+            </div>
+            <div id="calendar-this-week" class="calendar-sidebar-list">
+              <!-- This week populated by JS -->
+            </div>
+          </section>
+
+          <section class="glass-card analysis-card" id="calendar-detail-card" style="display: none; border-top: 3px solid var(--accent-purple);">
+            <div class="section-header">
+              <h2 id="cal-detail-title">Event Detail</h2>
+            </div>
+            <div class="cal-detail-body">
+              <div class="cal-detail-row">
+                <span class="cal-detail-label">Time:</span>
+                <span class="cal-detail-value" id="cal-detail-time">--</span>
+              </div>
+              <div class="cal-detail-row">
+                <span class="cal-detail-label">Impact:</span>
+                <span class="cal-detail-value" id="cal-detail-impact">--</span>
+              </div>
+              <div class="cal-detail-section">
+                <h4>Consensus / Expectation</h4>
+                <p id="cal-detail-consensus">--</p>
+                <p id="cal-detail-expected" style="font-size:0.9rem; color:var(--text-muted);">--</p>
+              </div>
+              <div class="cal-detail-section">
+                <h4>Market Reaction (Deviation Effect)</h4>
+                <p id="cal-detail-effect" style="padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size:0.9rem; line-height: 1.5;">--</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </div><!-- /tab: calendar -->
+
+    <!-- ==================== TAB: STOCKS & EARNINGS ==================== -->
+    <div class="tab-panel" data-tab="stocks">
+      <section class="glass-card">
+        <div class="section-header">
+          <h2>🏢 S&P 500 Top Constituents &amp; Earnings</h2>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <input type="text" id="stocksSearch" placeholder="Search ticker or company..." style="padding: 8px 14px; border-radius: 6px; background: var(--bg-inset); border: 1px solid var(--glass-border); color: var(--text-primary); outline:none; font-size:0.9rem; width:220px;">
+          </div>
+        </div>
+        <p class="section-desc">Track real-time pricing, index weights, 52-week ranges, and quarterly earnings data (including surprise % and next-day price reaction) for the top 25 market-moving S&P 500 stocks.</p>
+      </section>
+
+      <section class="glass-card" style="margin-top:20px;">
+        <div id="stocksLoading" style="display:flex; justify-content:center; align-items:center; height:200px; font-size:1.1rem; color:var(--text-secondary);">
+          <span class="vt-spinner" style="width:20px; height:20px; border-width:3px; margin-right:8px;"></span> Loading stock earnings data... This may take ~10 seconds.
+        </div>
+        <div id="stocksTableWrap" style="display:none; overflow-x:auto;">
+          <table class="data-table" id="stocksTable" style="width:100%; font-size:0.85rem;">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Company</th>
+                <th>Market Cap</th>
+                <th>Price ($)</th>
+                <th>Change %</th>
+                <th>52W High</th>
+                <th>52W Low</th>
+                <th>Most Recent Q</th>
+                <th>Q-1</th>
+                <th>Q-2</th>
+                <th>Q-3</th>
+                <th>Q-4</th>
+                <th>Next Earnings</th>
+              </tr>
+            </thead>
+            <tbody id="stocksBody">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div><!-- /tab: stocks -->
+
+    <!-- ==================== TAB: ECONOMIC DATA ==================== -->
+    <div class="tab-panel" data-tab="economics">
+      <section class="glass-card">
+        <div class="section-header">
+          <h2>📊 US Macroeconomic Indicators</h2>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span id="econUpdatedTime" class="date-range-label" style="font-size:12px;"></span>
+          </div>
+        </div>
+        <p class="section-desc">Track the last 5 historical releases for the key macroeconomic data points that drive Fed rate path expectations and S&P 500 price action. Real-time consensus comparisons classify outcomes as beats or misses.</p>
+      </section>
+
+      <!-- Grid of Economic Indicators -->
+      <div id="econGrid" class="dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; margin-top:20px;">
+        <!-- Injected by JS -->
+      </div>
+    </div><!-- /tab: economics -->
+
+    <!-- Component Info Modal -->
+    <div id="info-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content glass-card">
+        <button id="modal-close" class="modal-close">&times;</button>
+        <div class="modal-icon" id="modal-icon"></div>
+        <h3 id="modal-title"></h3>
+        <p id="modal-short" class="modal-short"></p>
+        <div class="modal-body">
+          <div class="modal-field">
+            <h4>Description</h4>
+            <p id="modal-description"></p>
+          </div>
+          <div class="modal-field">
+            <h4>When Positive (+)</h4>
+            <p id="modal-positive" class="text-red"></p>
+          </div>
+          <div class="modal-field">
+            <h4>When Negative (−)</h4>
+            <p id="modal-negative" class="text-green"></p>
+          </div>
+          <div class="modal-field">
+            <h4>Typical Range</h4>
+            <p id="modal-range"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== MODAL: HISTORICAL CHART STUDIO ==================== -->
+  <div id="chart-modal" class="modal" style="display: none;">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content glass-card" style="max-width: 860px; width: 92%; background: rgba(15, 23, 42, 0.96); border: 1px solid var(--glass-border); box-shadow: 0 24px 60px rgba(0,0,0,0.65);">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--glass-border); padding-bottom:12px; margin-bottom:14px;">
+        <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+          <h3 id="modal-chart-title" style="margin:0; font-size:1.15rem;">Symbol History</h3>
+          <span id="modal-chart-live-price" style="font-family: var(--font-mono); font-weight: 700; font-size: 1.25rem;"></span>
+          <span id="modal-chart-live-chg" style="font-family: var(--font-mono); font-weight: 600; font-size: 0.9rem;"></span>
+        </div>
+        <button id="btn-modal-close" class="modal-close" style="top: 12px; right: 12px; font-size:1.5rem;">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Stats Ribbon -->
+        <div class="modal-stats-ribbon" id="modal-stats-ribbon">
+          <div><div class="modal-stat-label">Period Return</div><div id="mstat-return" class="modal-stat-val">--</div></div>
+          <div><div class="modal-stat-label">Period High</div><div id="mstat-high" class="modal-stat-val">--</div></div>
+          <div><div class="modal-stat-label">Period Low</div><div id="mstat-low" class="modal-stat-val">--</div></div>
+          <div><div class="modal-stat-label">Period Open</div><div id="mstat-open" class="modal-stat-val">--</div></div>
+          <div><div class="modal-stat-label">Total Volume</div><div id="mstat-vol" class="modal-stat-val">--</div></div>
+        </div>
+
+        <!-- Controls Bar: Timeframe & Indicators -->
+        <div class="modal-controls-bar">
+          <div class="chart-period-selector" style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="period-btn active" data-range="1d" data-interval="5m">1D (5m)</button>
+            <button class="period-btn" data-range="5d" data-interval="15m">5D (15m)</button>
+            <button class="period-btn" data-range="1mo" data-interval="1d">1M</button>
+            <button class="period-btn" data-range="3mo" data-interval="1d">3M</button>
+            <button class="period-btn" data-range="6mo" data-interval="1d">6M</button>
+            <button class="period-btn" data-range="1y" data-interval="1d">1Y</button>
+            <button class="period-btn" data-range="ytd" data-interval="1d">YTD</button>
+          </div>
+
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Overlays:</span>
+            <button class="ind-toggle-btn active" id="btn-toggle-sma20" data-ind="sma20">SMA 20</button>
+            <button class="ind-toggle-btn" id="btn-toggle-sma50" data-ind="sma50">SMA 50</button>
+            <button class="ind-toggle-btn active" id="btn-toggle-volume" data-ind="volume">Volume</button>
+          </div>
+        </div>
+
+        <div class="modal-chart-container" style="position: relative; height: 350px; width: 100%;">
+          <canvas id="modal-history-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="app-footer">
+    <p>Data sourced from <a href="https://www.cboe.com/tradable-products/vix/vix-decomposition/" target="_blank">CBOE VIX Decomposition (Beta)</a>. Market Pulse data from Yahoo Finance, FRED &amp; StockTwits. For informational purposes only. Not investment advice.</p>
+  </footer>
+
+  <script src="src/analysis.js?v=3"></script>
+  <script src="src/search.js?v=3"></script>
+  <script src="src/charts.js?v=3"></script>
+  <script src="src/strategy.js?v=3"></script>
+  <script src="src/rr_analysis.js?v=3"></script>
+  <script src="src/market_pulse.js?v=4"></script>
+  <script src="src/calendar.js?v=1"></script>
+  <script src="src/vix_term.js?v=2"></script>
+  <script src="src/stocks_econ.js?v=1"></script>
+  <script src="src/query_analysis.js?v=1"></script>
+  <script src="src/main.js?v=4"></script>
+  <script>
+    // MarketScope: purge the old VIX service worker + caches so the new app always loads.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+    }
+    if ('caches' in window) {
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+    }
+  </script>
+</body>
+</html>
