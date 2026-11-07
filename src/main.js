@@ -108,6 +108,10 @@
           if (target === 'drivers') window.MarketDrivers.activate();
           else window.MarketDrivers.deactivate();
         }
+        if (window.OptionsOI) {
+          if (target === 'optionsoi') window.OptionsOI.activate();
+          else window.OptionsOI.deactivate();
+        }
         if (window.VixTerm) {
           if (target === 'vixterm') window.VixTerm.activate();
           else window.VixTerm.deactivate();
@@ -138,26 +142,39 @@
   // ===========================================================
   function initTheme() {
     const toggle = document.getElementById('btn-theme-toggle');
-    const saved = localStorage.getItem('vix_theme') || 'dark';
+    const saved = localStorage.getItem('marketscope_theme') || 'light';
     applyTheme(saved);
 
     toggle.addEventListener('click', () => {
       const current = document.documentElement.getAttribute('data-theme') || 'dark';
       const next = current === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-      localStorage.setItem('vix_theme', next);
-      // Re-render charts for new theme colors
-      renderDashboard();
-      if (currentSearchResults.length) renderSearchResultsChart(currentSearchResults.map(item => item.record));
-      if (window.VixTerm) window.VixTerm.renderChart();
+      const updateAppearance = () => {
+        applyTheme(next);
+        localStorage.setItem('marketscope_theme', next);
+        // Re-render charts for new theme colors
+        renderDashboard();
+        if (currentSearchResults.length) renderSearchResultsChart(currentSearchResults.map(item => item.record));
+        if (window.VixTerm) window.VixTerm.renderChart();
+        if (window.OptionsOI) window.OptionsOI.renderCharts();
+      };
+
+      if (document.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.startViewTransition(updateAppearance);
+      } else {
+        updateAppearance();
+      }
     });
   }
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     const toggle = document.getElementById('btn-theme-toggle');
-    toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-    toggle.title = theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    const isDark = theme === 'dark';
+    toggle.innerHTML = isDark
+      ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>'
+      : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15.1Z"/></svg>';
+    toggle.title = isDark ? 'Switch to light appearance' : 'Switch to dark appearance';
+    toggle.setAttribute('aria-label', toggle.title);
   }
 
   // ===========================================================
@@ -1300,6 +1317,7 @@
     addFilterRule();
     if (window.MarketPulse) window.MarketPulse.init();
     if (window.MarketDrivers) window.MarketDrivers.init();
+    if (window.OptionsOI) window.OptionsOI.init();
     if (window.VixTerm) window.VixTerm.init();
     if (window.StocksEcon) window.StocksEcon.init();
   } catch (err) {
