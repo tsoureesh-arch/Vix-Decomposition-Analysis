@@ -7,7 +7,8 @@
   <meta name="description" content="Analyze CBOE VIX decomposition factors with historical data, natural language explanations, and pattern matching.">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="src/styles.css?v=5">
+  <link rel="stylesheet" href="src/styles.css?v=6">
+  <link rel="stylesheet" href="src/apple_ui.css?v=2">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="theme-color" content="#1e293b">
@@ -19,14 +20,13 @@
       <div class="logo-area">
         <div class="logo-icon">
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="8" fill="url(#grad1)"/>
-            <path d="M8 22L12 12L16 18L20 8L24 16" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <defs><linearGradient id="grad1" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6C5CE7"/><stop offset="1" stop-color="#00B894"/></linearGradient></defs>
+            <rect width="32" height="32" rx="9"/>
+            <path d="M7.5 21.5L11.5 13L15.5 18L20 9.5L24.5 15.5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
         <div>
           <h1>MarketScope</h1>
-          <p class="subtitle">S&P 500 Futures · Volatility · Macro · Live News</p>
+          <p class="subtitle">Market intelligence, clearly.</p>
         </div>
       </div>
       <div class="header-badges">
@@ -34,7 +34,9 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.27l3.08-3.08"/></svg>
           SYNC DATA
         </button>
-        <button id="btn-theme-toggle" class="theme-toggle" title="Toggle Light/Dark Mode">🌙</button>
+        <button id="btn-theme-toggle" class="theme-toggle" title="Switch appearance" aria-label="Switch appearance">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15.1Z"/></svg>
+        </button>
         <span class="badge badge-beta">BETA</span>
       </div>
     </div>
@@ -56,6 +58,9 @@
     </button>
     <button class="tab-btn" data-tab="riskreversal">
       <span class="tab-icon">📈</span> Risk Reversal
+    </button>
+    <button class="tab-btn" data-tab="optionsoi">
+      <span class="tab-icon">🧱</span> Options OI
     </button>
     <button class="tab-btn" data-tab="drivers">
       <span class="tab-icon">🧭</span> Market Drivers
@@ -546,6 +551,150 @@
         </div>
       </section>
     </div><!-- /tab: riskreversal -->
+
+    <!-- ==================== TAB: OPTIONS OPEN INTEREST ==================== -->
+    <div class="tab-panel" data-tab="optionsoi">
+      <section class="glass-card options-hero">
+        <div class="section-header options-title-row">
+          <div>
+            <h2>🧱 SPX Options Open Interest &amp; Volume</h2>
+            <p class="section-desc">Inspect a specific expiry and strike, compare calls with puts, and locate the largest OI concentrations across expiries.</p>
+          </div>
+          <div class="options-refresh-wrap">
+            <span id="options-asof" class="date-range-label"></span>
+            <button id="btn-options-refresh" class="badge badge-live sync-btn options-refresh-btn" type="button">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-5.27l3.08-3.08"/></svg>
+              REFRESH
+            </button>
+          </div>
+        </div>
+        <div class="options-source-line">
+          <span class="options-live-dot"></span>
+          Official delayed <a href="https://www.cboe.com/delayed_quotes/spx/quote_table/" target="_blank" rel="noopener">Cboe SPX chain</a>
+          <span>· OI normally updates once per session</span>
+        </div>
+      </section>
+
+      <section class="glass-card options-controls-card">
+        <div class="options-controls">
+          <label class="options-control options-expiry-control">
+            <span>Expiry &amp; settlement</span>
+            <select id="options-expiry" disabled><option>Loading expiries…</option></select>
+          </label>
+          <label class="options-control">
+            <span>Strike range</span>
+            <select id="options-range">
+              <option value="5">±5% around SPX</option>
+              <option value="10" selected>±10% around SPX</option>
+              <option value="20">±20% around SPX</option>
+              <option value="all">All strikes</option>
+            </select>
+          </label>
+          <label class="options-control">
+            <span>Aggregate expiries</span>
+            <select id="options-horizon">
+              <option value="30">Next 30 days</option>
+              <option value="60" selected>Next 60 days</option>
+              <option value="90">Next 90 days</option>
+              <option value="all">All listed expiries</option>
+            </select>
+          </label>
+          <label class="options-control options-strike-control">
+            <span>Inspect exact strike</span>
+            <div class="options-strike-entry">
+              <input id="options-strike-input" type="number" step="5" placeholder="e.g. 7400" inputmode="decimal">
+              <button id="btn-options-strike" class="btn btn-secondary" type="button">Show</button>
+            </div>
+          </label>
+        </div>
+        <p id="options-status" class="options-status" aria-live="polite">Loading the current SPX options chain…</p>
+      </section>
+
+      <div id="options-summary" class="options-summary-grid">
+        <div class="options-loading">Loading positioning summary…</div>
+      </div>
+
+      <div class="options-chart-grid">
+        <section class="glass-card">
+          <div class="section-header options-chart-heading">
+            <div>
+              <h2>Selected Expiry OI</h2>
+              <p id="options-selected-caption" class="section-desc">Calls above zero, puts below zero.</p>
+            </div>
+            <div class="options-view-toggle" data-chart="selected">
+              <button class="active" data-metric="oi" type="button">OI</button>
+              <button data-metric="volume" type="button">Volume</button>
+            </div>
+          </div>
+          <div class="options-chart-canvas"><canvas id="options-selected-chart"></canvas></div>
+        </section>
+
+        <section class="glass-card">
+          <div class="section-header options-chart-heading">
+            <div>
+              <h2>Overall Strike Positioning</h2>
+              <p id="options-aggregate-caption" class="section-desc">Combined across the selected expiry horizon.</p>
+            </div>
+            <div class="options-view-toggle" data-chart="aggregate">
+              <button class="active" data-metric="oi" type="button">OI</button>
+              <button data-metric="volume" type="button">Volume</button>
+            </div>
+          </div>
+          <div class="options-chart-canvas"><canvas id="options-aggregate-chart"></canvas></div>
+        </section>
+      </div>
+
+      <section class="glass-card options-strike-panel">
+        <div class="section-header">
+          <div>
+            <h2 id="options-strike-title">🎯 Strike Inspector</h2>
+            <p class="section-desc">Click a chart bar or table row, or enter a strike above.</p>
+          </div>
+        </div>
+        <div id="options-strike-detail" class="options-strike-detail">
+          <div class="options-empty">Choose a strike to see its exact call/put OI, volume, prices, IV and change from your prior recorded session.</div>
+        </div>
+      </section>
+
+      <section class="glass-card">
+        <div class="section-header options-table-heading">
+          <div>
+            <h2>📋 Selected Expiry Chain</h2>
+            <p class="section-desc">Click any row to inspect that strike. ΔOI is based on this browser’s last recorded Cboe session.</p>
+          </div>
+          <label class="options-table-filter">
+            <span>Filter strikes</span>
+            <input id="options-table-search" type="search" placeholder="Type 7400…">
+          </label>
+        </div>
+        <div class="options-table-wrap">
+          <table class="options-chain-table">
+            <thead>
+              <tr>
+                <th class="call-side">Call IV</th>
+                <th class="call-side">Call Vol</th>
+                <th class="call-side">Call ΔOI</th>
+                <th class="call-side">Call OI</th>
+                <th>Strike</th>
+                <th class="put-side">Put OI</th>
+                <th class="put-side">Put ΔOI</th>
+                <th class="put-side">Put Vol</th>
+                <th class="put-side">Put IV</th>
+              </tr>
+            </thead>
+            <tbody id="options-chain-body">
+              <tr><td colspan="9" class="options-empty">Loading option strikes…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="glass-card options-method-card">
+        <div class="section-header"><h2>How to read this</h2></div>
+        <div id="options-insights" class="options-insights"></div>
+        <p class="options-method-note"><strong>Important:</strong> a put-OI wall is labelled a support candidate and a call-OI wall a resistance candidate. OI alone does not reveal whether dealers are long or short, and these levels can fail. This is positioning context, not investment advice.</p>
+      </section>
+    </div><!-- /tab: optionsoi -->
 
     <!-- ==================== TAB: MARKET DRIVERS ==================== -->
     <div class="tab-panel" data-tab="drivers">
@@ -1097,7 +1246,7 @@
   </div>
 
   <footer id="app-footer">
-    <p>Data sourced from <a href="https://www.cboe.com/tradable-products/vix/vix-decomposition/" target="_blank">CBOE VIX Decomposition (Beta)</a>. Market Pulse data from Yahoo Finance, FRED &amp; StockTwits. For informational purposes only. Not investment advice.</p>
+    <p>Data sourced from <a href="https://www.cboe.com/tradable-products/vix/vix-decomposition/" target="_blank">Cboe VIX Decomposition</a> and <a href="https://www.cboe.com/delayed_quotes/spx/quote_table/" target="_blank">Cboe delayed SPX options quotes</a>. Market Pulse data from Yahoo Finance, FRED &amp; StockTwits. For informational purposes only. Not investment advice.</p>
   </footer>
 
   <script src="src/analysis.js?v=3"></script>
@@ -1107,11 +1256,13 @@
   <script src="src/rr_analysis.js?v=3"></script>
   <script src="src/market_pulse.js?v=4"></script>
   <script src="src/market_drivers.js?v=1"></script>
+  <script src="src/options_oi.js?v=1"></script>
+  <script src="src/interface_polish.js?v=2"></script>
   <script src="src/calendar.js?v=1"></script>
   <script src="src/vix_term.js?v=2"></script>
   <script src="src/stocks_econ.js?v=1"></script>
   <script src="src/query_analysis.js?v=1"></script>
-  <script src="src/main.js?v=4"></script>
+  <script src="src/main.js?v=6"></script>
   <script>
     // MarketScope: purge the old VIX service worker + caches so the new app always loads.
     if ('serviceWorker' in navigator) {

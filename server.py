@@ -1042,6 +1042,256 @@ def get_economics_data():
         return _econ_cache.get('data', {'indicators': [], 'status': 'loading'})
 
 
+# ============================================================
+#  SPX OPTIONS POSITIONING - official Cboe delayed chain
+# ============================================================
+CBOE_SPX_OPTIONS_URL = "https://cdn.cboe.com/api/global/delayed_quotes/options/_SPX.json"
+_options_cache = {"data": None, "ts": 0}
+_options_cache_lock = threading.Lock()
+_OPTION_SYMBOL_RE = re.compile(r"^(SPXW?|SPXQ)(\d{6})([CP])(\d{8})$")
+
+
+def _option_number(value, default=0.0):
+    try:
+        number = float(value)
+        return number if math.isfinite(number) else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _load_spx_options():
+    """Fetch and compact the public Cboe delayed SPX/SPXW options chain."""
+    now = time.time()
+    with _options_cache_lock:
+        if _options_cache["data"] and now - _options_cache["ts"] < 120:
+            return _options_cache["data"]
+
+        headers = dict(UA)
+        headers.update({"Accept": "application/json", "Referer": "https://www.cboe.com/"})
+        try:
+            response = requests.get(CBOE_SPX_OPTIONS_URL, headers=headers, timeout=45)
+            response.raise_for_status()
+            raw = response.json()
+            source = raw.get("data") or {}
+            asof = raw.get("timestamp") or datetime.now(timezone.utc).isoformat()
+            spot = _option_number(source.get("current_price"), None)
+            if spot is None:
+                raise ValueError("Cboe response did not include an SPX price")
+
+            try:
+                feed_date = datetime.strptime(asof[:10], "%Y-%m-%d").date()
+            except (TypeError, ValueError):
+                feed_date = datetime.now(timezone.utc).date()
+
+            chains = {}
+            contract_count = 0
+            for contract in source.get("options", []):
+                match = _OPTION_SYMBOL_RE.match(str(contract.get("option", "")))
+                if not match:
+                    continue
+                series, yymmdd, side, strike_code = match.groups()
+                expiry_date = datetime.strptime(yymmdd, "%y%m%d").date()
+                if expiry_date < feed_date:
+                    continue
+
+                expiry = expiry_date.isoformat()
+                strike = int(strike_code) / 1000.0
+                chain = chains.setdefault((expiry, series), {})
+                row = chain.setdefault(strike, {"strike": strike, "call": None, "put": None})
+                leg = {
+                    "oi": int(_option_number(contract.get("open_interest"))),
+                    "volume": int(_option_number(contract.get("volume"))),
+                    "bid": _option_number(contract.get("bid"), None),
+                    "ask": _option_number(contract.get("ask"), None),
+                    "last": _option_number(contract.get("last_trade_price"), None),
+                    "iv": _option_number(contract.get("iv"), None),
+                    "delta": _option_number(contract.get("delta"), None),
+                }
+                row["call" if side == "C" else "put"] = leg
+                contract_count += 1
+
+            expirations = []
+            for expiry, series in sorted(chains):
+                expiry_date = date.fromisoformat(expiry)
+                expirations.append({
+                    "date": expiry,
+                    "series": series,
+                    "dte": max(0, (expiry_date - feed_date).days),
+                    "settlement": "PM" if series == "SPXW" else "AM",
+                    "strike_count": len(chains[(expiry, series)]),
+                })
+
+            if not expirations:
+                raise ValueError("Cboe response contained no current SPX expirations")
+
+            compact = {
+                "asof": asof,
+                "feed_date": feed_date.isoformat(),
+                "spot": spot,
+                "chains": chains,
+                "expirations": expirations,
+                "contract_count": contract_count,
+            }
+            _options_cache["data"] = compact
+            _options_cache["ts"] = now
+            return compact
+        except Exception:
+            if _options_cache["data"]:
+                return _options_cache["data"]
+            raise
+
+
+def _option_rows(chain, spot, range_pct):
+    if range_pct is None:
+        low = high = None
+    else:
+        low = spot * (1 - range_pct / 100.0)
+        high = spot * (1 + range_pct / 100.0)
+
+    rows = []
+    for strike in sorted(chain):
+        if low is not None and (strike < low or strike > high):
+            continue
+        source = chain[strike]
+        call = source.get("call") or {"oi": 0, "volume": 0}
+        put = source.get("put") or {"oi": 0, "volume": 0}
+        call_oi = int(call.get("oi") or 0)
+        put_oi = int(put.get("oi") or 0)
+        call_volume = int(call.get("volume") or 0)
+        put_volume = int(put.get("volume") or 0)
+        rows.append({
+            "strike": strike,
+            "call": source.get("call"),
+            "put": source.get("put"),
+            "call_oi": call_oi,
+            "put_oi": put_oi,
+            "total_oi": call_oi + put_oi,
+            "call_volume": call_volume,
+            "put_volume": put_volume,
+            "total_volume": call_volume + put_volume,
+        })
+    return rows
+
+
+def _positioning_summary(rows, spot, include_max_pain=False):
+    call_oi = sum(row["call_oi"] for row in rows)
+    put_oi = sum(row["put_oi"] for row in rows)
+    call_volume = sum(row["call_volume"] for row in rows)
+    put_volume = sum(row["put_volume"] for row in rows)
+
+    below = [row for row in rows if row["strike"] <= spot and row["put_oi"] > 0]
+    above = [row for row in rows if row["strike"] >= spot and row["call_oi"] > 0]
+    put_wall = max(below, key=lambda row: row["put_oi"], default=None)
+    call_wall = max(above, key=lambda row: row["call_oi"], default=None)
+    activity = max(rows, key=lambda row: row["total_volume"], default=None)
+
+    summary = {
+        "call_oi": call_oi,
+        "put_oi": put_oi,
+        "total_oi": call_oi + put_oi,
+        "put_call_oi_ratio": round(put_oi / call_oi, 3) if call_oi else None,
+        "call_volume": call_volume,
+        "put_volume": put_volume,
+        "total_volume": call_volume + put_volume,
+        "put_call_volume_ratio": round(put_volume / call_volume, 3) if call_volume else None,
+        "put_wall": ({"strike": put_wall["strike"], "oi": put_wall["put_oi"]}
+                     if put_wall else None),
+        "call_wall": ({"strike": call_wall["strike"], "oi": call_wall["call_oi"]}
+                      if call_wall else None),
+        "highest_volume": ({"strike": activity["strike"], "volume": activity["total_volume"]}
+                           if activity else None),
+    }
+
+    if include_max_pain and rows:
+        candidates = [row["strike"] for row in rows]
+        best_strike = None
+        best_payout = None
+        for settlement in candidates:
+            payout = sum(
+                row["call_oi"] * max(0, settlement - row["strike"])
+                + row["put_oi"] * max(0, row["strike"] - settlement)
+                for row in rows
+            )
+            if best_payout is None or payout < best_payout:
+                best_payout = payout
+                best_strike = settlement
+        summary["max_pain"] = best_strike
+    return summary
+
+
+def fetch_options_positioning(expiry=None, series=None, range_value="10", horizon_value="60"):
+    base = _load_spx_options()
+    expirations = base["expirations"]
+
+    selected_meta = None
+    if expiry:
+        selected_meta = next((item for item in expirations
+                              if item["date"] == expiry and (not series or item["series"] == series)), None)
+    if selected_meta is None:
+        selected_meta = expirations[0]
+
+    if str(range_value).lower() == "all":
+        range_pct = None
+    else:
+        range_pct = min(50.0, max(1.0, _option_number(range_value, 10.0)))
+
+    if str(horizon_value).lower() == "all":
+        horizon_days = None
+    else:
+        horizon_days = min(730, max(1, int(_option_number(horizon_value, 60))))
+
+    key = (selected_meta["date"], selected_meta["series"])
+    selected_rows = _option_rows(base["chains"][key], base["spot"], range_pct)
+    selected_summary = _positioning_summary(selected_rows, base["spot"])
+    full_expiry_rows = _option_rows(base["chains"][key], base["spot"], None)
+    selected_summary["max_pain"] = _positioning_summary(
+        full_expiry_rows, base["spot"], include_max_pain=True
+    ).get("max_pain")
+
+    aggregate_chain = {}
+    feed_date = date.fromisoformat(base["feed_date"])
+    for (chain_expiry, _chain_series), chain in base["chains"].items():
+        dte = (date.fromisoformat(chain_expiry) - feed_date).days
+        if horizon_days is not None and dte > horizon_days:
+            continue
+        for strike, source_row in chain.items():
+            target = aggregate_chain.setdefault(strike, {
+                "strike": strike,
+                "call": {"oi": 0, "volume": 0},
+                "put": {"oi": 0, "volume": 0},
+            })
+            for side in ("call", "put"):
+                leg = source_row.get(side)
+                if leg:
+                    target[side]["oi"] += int(leg.get("oi") or 0)
+                    target[side]["volume"] += int(leg.get("volume") or 0)
+
+    aggregate_rows = _option_rows(aggregate_chain, base["spot"], range_pct)
+    return {
+        "source": "Cboe delayed SPX options quotes",
+        "source_url": "https://www.cboe.com/delayed_quotes/spx/quote_table/",
+        "delayed": True,
+        "asof": base["asof"],
+        "symbol": "SPX",
+        "spot": base["spot"],
+        "contract_count": base["contract_count"],
+        "range_pct": range_pct,
+        "expirations": expirations,
+        "selected": selected_meta,
+        "rows": selected_rows,
+        "summary": selected_summary,
+        "aggregate": {
+            "days": horizon_days,
+            "rows": aggregate_rows,
+            "summary": _positioning_summary(aggregate_rows, base["spot"]),
+        },
+        "notes": [
+            "Open interest is reported by Cboe and generally updates once per trading session.",
+            "Support and resistance labels are OI concentration heuristics, not predictions or dealer-position estimates.",
+        ],
+    }
+
+
 PULSE_ROUTES = {
     "/api/pulse/quotes": fetch_quotes,
     "/api/pulse/rates": fetch_rates,
@@ -1118,6 +1368,20 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json(get_economics_data())
             except Exception as e:
                 self._send_json({"error": str(e)}, 500)
+            return
+
+        if path == "/api/options/positioning":
+            params = urllib.parse.parse_qs(query)
+            try:
+                self._send_json(fetch_options_positioning(
+                    expiry=params.get("expiry", [None])[0],
+                    series=params.get("series", [None])[0],
+                    range_value=params.get("range", ["10"])[0],
+                    horizon_value=params.get("horizon", ["60"])[0],
+                ))
+            except Exception as e:
+                print(f"[WARN] Cboe options fetch error: {e}")
+                self._send_json({"error": "Unable to load the Cboe SPX options chain right now."}, 502)
             return
 
         handler = PULSE_ROUTES.get(path)
