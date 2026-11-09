@@ -1,0 +1,30 @@
+name: Refresh trading history
+on:
+  schedule:
+    - cron: '17 0,3,12,18,21 * * 1-6'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: trading-history
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python update_data.py
+      - name: Save published trading sessions
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/vix_decomposition_history.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Refresh published Cboe trading history'
+            git pull --rebase origin main
+            git push
+          fi
