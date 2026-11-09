@@ -19,6 +19,7 @@
     calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>',
     stocks: '<path d="M5 21V7l7-4 7 4v14M9 9h2M13 9h2M9 13h2M13 13h2M10 21v-4h4v4"/>',
     economics: '<path d="M4 20v-5h3v5M10.5 20V9h3v11M17 20V4h3v16M2 20h20"/>',
+    research: '<path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14"/><path d="M4 17h16M8 7h8M8 11h6M2 21h20"/>',
   };
   const REVEAL_SELECTOR = [
     '.tab-panel > .glass-card',
