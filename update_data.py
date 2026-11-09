@@ -15,6 +15,7 @@ import time
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+import tempfile
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "data", "vix_decomposition_history.json")
 ssl_ctx = ssl.create_default_context()
@@ -314,7 +315,14 @@ def main():
     existing.extend(enriched_new)
         
     print(f"Saving {len(existing)} total records ({len(enriched_new)} new). Success!")
-    with open(DATA_FILE, 'w') as f: json.dump(existing, f, indent=2)
+    fd, temporary = tempfile.mkstemp(dir=os.path.dirname(DATA_FILE), suffix='.json')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(existing, f, indent=2)
+        os.replace(temporary, DATA_FILE)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 if __name__ == "__main__":
     main()

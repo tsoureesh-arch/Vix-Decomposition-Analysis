@@ -147,6 +147,7 @@ def _fetch_single_quote(item):
             "change": change, "change_pct": chg_pct,
             "sparkline": sparkline,
             "currency": meta.get("currency", ""),
+            "quote_time": meta.get("regularMarketTime"),
             "ok": price is not None,
         }
     except Exception as e:
@@ -324,20 +325,59 @@ def _parse_rss(xml, source, limit=8):
     return items
 
 
+_news_cache = {"data": None, "ts": 0}
+_news_lock = threading.Lock()
+
+
 def fetch_news():
+    with _news_lock:
+        if _news_cache['data'] and time.time() - _news_cache['ts'] < 300:
+            return _news_cache['data']
+    return _refresh_news()
+
+
+def _refresh_news():
     feeds = [
         ("CNBC", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"),
         ("Yahoo Finance", "https://finance.yahoo.com/news/rssindex"),
         ("MarketWatch", "http://feeds.marketwatch.com/marketwatch/topstories/"),
         ("CNBC Markets", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258"),
+        ("Federal Reserve", "https://www.federalreserve.gov/feeds/press_all.xml"),
+        ("Volatility news search", "https://news.google.com/rss/search?q=VIX+options+volatility+SPX+when:2d&hl=en-US&gl=US&ceid=US:en"),
+        ("Global catalysts search", "https://news.google.com/rss/search?q=SP500+Treasury+oil+yen+KOSPI+when:2d&hl=en-US&gl=US&ceid=US:en"),
     ]
     all_items = []
-    for name, url in feeds:
+    failed = []
+    def fetch_feed(feed):
+        name, url = feed
         try:
-            all_items.extend(_parse_rss(_http_get(url), name, limit=6))
+            items = _parse_rss(_http_get(url), name, limit=12)
+            return name, items
         except Exception:
-            continue
-    return {"asof": datetime.now(timezone.utc).isoformat(), "news": all_items[:24]}
+            return name, []
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        for name, items in pool.map(fetch_feed, feeds):
+            if not items:
+                failed.append(name)
+            all_items.extend(items)
+    from email.utils import parsedate_to_datetime
+    def published(item):
+        try:
+            return parsedate_to_datetime(item['pubDate']).timestamp()
+        except Exception:
+            return 0
+    all_items.sort(key=published, reverse=True)
+    seen = set()
+    unique = []
+    for item in all_items:
+        key = item['title'].lower().strip()
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    result = {"asof": datetime.now(timezone.utc).isoformat(), "news": unique[:60], "failed_sources": failed}
+    with _news_lock:
+        _news_cache.update(data=result, ts=time.time())
+    return result
 
 
 def fetch_sentiment():
@@ -1322,6 +1362,11 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
         parts = self.path.split('?', 1)
         path = parts[0]
         query = parts[1] if len(parts) > 1 else ""
+        if path == '/api/history/status':
+            with open(os.path.join(DIRECTORY, 'data/vix_decomposition_history.json')) as handle:
+                records = json.load(handle)
+            self._send_json(dict(_history_status, latest_session=max((r['date_to'] for r in records), default=None)))
+            return
 
         if path == "/api/pulse/historical":
             params = urllib.parse.parse_qs(query)
@@ -1396,7 +1441,9 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/api/sync':
             try:
-                subprocess.run([sys.executable, "update_data.py"], check=True, cwd=DIRECTORY)
+                refresh_history()
+                if _history_status['error']:
+                    raise subprocess.CalledProcessError(1, 'update_data.py')
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
@@ -1436,6 +1483,30 @@ def kill_port(port):
         pass
 
 
+_history_lock = threading.Lock()
+_history_status = {"running": False, "last_attempt": None, "last_success": None, "error": None}
+
+
+def refresh_history():
+    if not _history_lock.acquire(blocking=False):
+        return
+    _history_status.update(running=True, last_attempt=datetime.now(timezone.utc).isoformat())
+    try:
+        subprocess.run([sys.executable, "update_data.py"], check=True, cwd=DIRECTORY, timeout=1200)
+        _history_status.update(last_success=datetime.now(timezone.utc).isoformat(), error=None)
+    except Exception as exc:
+        _history_status["error"] = str(exc)
+    finally:
+        _history_status["running"] = False
+        _history_lock.release()
+
+
+def history_refresh_loop():
+    while True:
+        refresh_history()
+        time.sleep(3600)
+
+
 def background_refresh_loops():
     # Warm up caches immediately in background thread so server starts instantly
     try:
@@ -1473,6 +1544,7 @@ def start_server():
         kill_port(PORT)
     # Start background refresh threads
     threading.Thread(target=background_refresh_loops, daemon=True).start()
+    threading.Thread(target=history_refresh_loop, daemon=True).start()
 
     socketserver.ThreadingTCPServer.allow_reuse_address = True
     with socketserver.ThreadingTCPServer(("", PORT), CustomHandler) as httpd:
