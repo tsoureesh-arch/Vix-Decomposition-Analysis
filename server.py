@@ -343,6 +343,10 @@ def _refresh_news():
         ("MarketWatch", "http://feeds.marketwatch.com/marketwatch/topstories/"),
         ("CNBC Markets", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258"),
         ("Federal Reserve", "https://www.federalreserve.gov/feeds/press_all.xml"),
+        ("Bureau of Economic Analysis", "https://apps.bea.gov/rss/rss.xml"),
+        ("U.S. Energy Information Administration", "https://www.eia.gov/rss/todayinenergy.xml"),
+        ("Reuters markets search", "https://news.google.com/rss/search?q=site%3Areuters.com+S%26P+500+Treasury+Fed+oil+markets+when%3A2d&hl=en-US&gl=US&ceid=US:en"),
+        ("Official economic releases search", "https://news.google.com/rss/search?q=%28site%3Abls.gov+OR+site%3Abea.gov%29+CPI+PPI+jobs+GDP+when%3A7d&hl=en-US&gl=US&ceid=US:en"),
         ("Volatility news search", "https://news.google.com/rss/search?q=VIX+options+volatility+SPX+when:2d&hl=en-US&gl=US&ceid=US:en"),
         ("Global catalysts search", "https://news.google.com/rss/search?q=SP500+Treasury+oil+yen+KOSPI+when:2d&hl=en-US&gl=US&ceid=US:en"),
     ]
@@ -374,7 +378,7 @@ def _refresh_news():
         if key not in seen:
             seen.add(key)
             unique.append(item)
-    result = {"asof": datetime.now(timezone.utc).isoformat(), "news": unique[:60], "failed_sources": failed}
+    result = {"asof": datetime.now(timezone.utc).isoformat(), "news": unique[:90], "failed_sources": failed}
     with _news_lock:
         _news_cache.update(data=result, ts=time.time())
     return result
